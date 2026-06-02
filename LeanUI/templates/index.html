@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuantConnect LEAN - 量化交易引擎控制台</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">⟐</div>
+      <div class="brand-text">
+        <span class="brand-title">LEAN</span>
+        <span class="brand-subtitle">QuantConnect Engine</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <span class="nav-icon">⊡</span> 控制台
+      </a>
+      <a class="nav-item" data-tab="backtest" onclick="switchTab('backtest')">
+        <span class="nav-icon">▶</span> 回测中心
+      </a>
+      <a class="nav-item" data-tab="algorithms" onclick="switchTab('algorithms')">
+        <span class="nav-icon">⚙</span> 算法管理
+      </a>
+      <a class="nav-item" data-tab="batch" onclick="switchTab('batch')">
+        <span class="nav-icon">⟠</span> 批量回测
+      </a>
+      <a class="nav-item" data-tab="live" onclick="switchTab('live')">
+        <span class="nav-icon">☀</span> 实盘交易
+      </a>
+      <a class="nav-item" data-tab="data" onclick="switchTab('data')">
+        <span class="nav-icon">◫</span> 数据管理
+      </a>
+      <a class="nav-item" data-tab="config" onclick="switchTab('config')">
+        <span class="nav-icon">☰</span> 配置编辑
+      </a>
+      <a class="nav-item" data-tab="logs" onclick="switchTab('logs')">
+        <span class="nav-icon">☷</span> 日志查看
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <span class="status-dot" id="engine-status-dot"></span>
+      <span id="engine-status-text">引擎就绪</span>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="topbar">
+      <h1 class="page-title" id="page-title">控制台 Dashboard</h1>
+      <div class="topbar-actions">
+        <span class="clock" id="clock"></span>
+        <span class="version-badge">v2.5.0</span>
+      </div>
+    </header>
+
+    <!-- ==================== Dashboard Tab ==================== -->
+    <section class="tab-content active" id="tab-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">算法总数</div>
+          <div class="stat-value" id="stat-algo-count">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">数据目录</div>
+          <div class="stat-value" id="stat-data-status">检查中...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">.NET SDK</div>
+          <div class="stat-value" id="stat-dotnet">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Python</div>
+          <div class="stat-value" id="stat-python">-</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">系统信息</div>
+        <div class="card-body">
+          <table class="info-table">
+            <tr><td>项目路径</td><td id="info-path">-</td></tr>
+            <tr><td>数据路径</td><td id="info-data-path">-</td></tr>
+            <tr><td>引擎版本</td><td id="info-version">-</td></tr>
+            <tr><td>操作系统</td><td id="info-os">-</td></tr>
+            <tr><td>运行环境</td><td id="info-env">-</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">快速操作</div>
+        <div class="card-body quick-actions">
+          <button class="btn btn-primary" onclick="switchTab('backtest')">▶ 启动回测</button>
+          <button class="btn btn-success" onclick="switchTab('algorithms')">⚙ 浏览算法</button>
+          <button class="btn btn-warning" onclick="switchTab('batch')">⟠ 批量回测排名</button>
+          <button class="btn btn-info" onclick="switchTab('data')">◫ 数据管理</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Backtest Tab ==================== -->
+    <section class="tab-content" id="tab-backtest">
+      <div class="two-column">
+        <div class="column">
+          <div class="card">
+            <div class="card-header">回测配置</div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>运行环境</label>
+                <select id="bt-environment" class="form-control">
+                  <option value="backtesting">回测 (Backtesting)</option>
+                  <option value="live-paper">模拟实盘 (Paper Trading)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>算法语言</label>
+                <select id="bt-language" class="form-control" onchange="onBacktestLanguageChange()">
+                  <option value="CSharp">C#</option>
+                  <option value="Python">Python</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>选择算法</label>
+                <div class="algo-search">
+                  <input type="text" id="bt-algo-search" class="form-control" placeholder="搜索算法..." oninput="filterBacktestAlgorithms()">
+                </div>
+                <select id="bt-algorithm" class="form-control algo-select" size="6"></select>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" id="btn-run-backtest" onclick="runBacktest()">▶ 启动回测</button>
+                <button class="btn btn-danger" id="btn-stop-backtest" onclick="stopBacktest()" disabled>■ 停止</button>
+              </div>
+              <div class="backtest-status" id="bt-status" style="display:none;">
+                <div class="spinner"></div>
+                <span id="bt-status-text">运行中...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="card">
+            <div class="card-header">回测结果
+              <button class="btn btn-sm" onclick="refreshResults()" style="float:right;">↻</button>
+            </div>
+            <div class="card-body"><div id="results-container"><p class="text-muted">点击启动回测</p></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">实时日志
+          <button class="btn btn-sm" onclick="clearLogs()" style="float:right;">清空</button>
+        </div>
+        <div class="log-output" id="log-output"><div class="log-placeholder">等待回测启动...</div></div>
+      </div>
+    </section>
+
+    <!-- ==================== Algorithms Tab ==================== -->
+    <section class="tab-content" id="tab-algorithms">
+      <div class="card">
+        <div class="card-header">
+          算法列表
+          <div class="header-actions">
+            <input type="text" id="algo-search" class="form-control form-control-sm" placeholder="搜索..." oninput="filterAlgorithms()">
+            <select id="algo-lang-filter" class="form-control form-control-sm" onchange="filterAlgorithms()">
+              <option value="">全部语言</option>
+              <option value="CSharp">C#</option>
+              <option value="Python">Python</option>
+            </select>
+            <select id="algo-cat-filter" class="form-control form-control-sm" onchange="filterAlgorithms()">
+              <option value="">全部分类</option>
+              <option value="技术指标策略">技术指标</option>
+              <option value="机器学习/AI">机器学习</option>
+              <option value="期权 (Options)">期权</option>
+              <option value="期货 (Futures)">期货</option>
+              <option value="加密货币 (Crypto)">加密货币</option>
+              <option value="外汇 (Forex)">外汇</option>
+              <option value="Alpha信号模型">Alpha信号</option>
+              <option value="风险管理">风险管理</option>
+              <option value="投资组合构建">组合构建</option>
+              <option value="执行模型">执行</option>
+              <option value="选股/选品种">选股</option>
+              <option value="统计套利">套利</option>
+              <option value="基础/引擎功能">引擎功能</option>
+            </select>
+            <select id="algo-tag-filter" class="form-control form-control-sm" onchange="filterAlgorithms()">
+              <option value="">全部标记</option>
+            </select>
+            <select id="algo-diff-filter" class="form-control form-control-sm" onchange="filterAlgorithms()">
+              <option value="">全部难度</option>
+              <option value="beginner">入门</option>
+              <option value="intermediate">中级</option>
+              <option value="advanced">高级</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="algo-grid" id="algo-grid"><p class="text-muted">加载中...</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Batch Backtest Tab ==================== -->
+    <section class="tab-content" id="tab-batch">
+      <div class="two-column">
+        <div class="column">
+          <div class="card">
+            <div class="card-header">批量回测 - 选择算法
+              <button class="btn btn-sm" onclick="batchSelectAll()" style="float:right;">全选/取消</button>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>语言</label>
+                <select id="batch-lang" class="form-control" onchange="loadBatchAlgoList()">
+                  <option value="CSharp">C#</option>
+                  <option value="Python">Python</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>快速筛选</label>
+                <input type="text" id="batch-algo-search" class="form-control" placeholder="搜索算法名..." oninput="loadBatchAlgoList()">
+              </div>
+              <div class="batch-algo-list" id="batch-algo-list" style="max-height:350px;overflow-y:auto;">
+                <p class="text-muted">加载中...</p>
+              </div>
+              <div class="form-actions" style="margin-top:12px;">
+                <button class="btn btn-primary" id="btn-batch-run" onclick="startBatchBacktest()">⟠ 开始批量回测</button>
+                <span id="batch-selected-count" style="color:var(--text-muted);font-size:12px;">已选 0 个</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="card">
+            <div class="card-header">
+              排名结果
+              <span id="batch-progress" style="font-size:12px;color:var(--text-muted);"></span>
+            </div>
+            <div class="card-body">
+              <div id="batch-results-container">
+                <p class="text-muted">选择算法后点击"开始批量回测"</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Live Trading Tab ==================== -->
+    <section class="tab-content" id="tab-live">
+      <div class="card">
+        <div class="card-header">实盘交易配置</div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>券商选择</label>
+            <select id="live-brokerage" class="form-control">
+              <option value="live-paper">模拟交易 (Paper Trading)</option>
+              <option value="live-interactive">Interactive Brokers</option>
+              <option value="live-alpaca">Alpaca</option>
+              <option value="live-binance">Binance</option>
+              <option value="live-bybit">Bybit</option>
+              <option value="live-coinbase">Coinbase</option>
+              <option value="live-kraken">Kraken</option>
+              <option value="live-oanda">Oanda</option>
+              <option value="live-charlesschwab">Charles Schwab</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>算法选择</label>
+            <select id="live-algorithm" class="form-control algo-select" size="5"></select>
+          </div>
+          <p class="text-muted">实盘交易前请配置对应券商的API密钥。</p>
+          <button class="btn btn-primary" onclick="startLiveTrading()">▶ 启动实盘交易</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Data Tab ==================== -->
+    <section class="tab-content" id="tab-data">
+      <div class="card">
+        <div class="card-header">市场数据目录
+          <button class="btn btn-sm" onclick="refreshDataTree()" style="float:right;">↻</button>
+        </div>
+        <div class="card-body"><div id="data-tree"><p class="text-muted">加载中...</p></div></div>
+      </div>
+    </section>
+
+    <!-- ==================== Config Tab ==================== -->
+    <section class="tab-content" id="tab-config">
+      <div class="card">
+        <div class="card-header">config.json 编辑器
+          <div class="header-actions">
+            <button class="btn btn-sm btn-success" onclick="saveConfig()">✓ 保存</button>
+            <button class="btn btn-sm" onclick="loadConfigToEditor()">↻ 重新加载</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <textarea id="config-editor" class="config-editor" spellcheck="false"></textarea>
+          <div id="config-save-status" class="save-status"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Logs Tab ==================== -->
+    <section class="tab-content" id="tab-logs">
+      <div class="card">
+        <div class="card-header">引擎日志
+          <button class="btn btn-sm" onclick="refreshLogs()" style="float:right;">↻</button>
+        </div>
+        <div class="card-body"><div class="log-output" id="log-viewer"><p class="text-muted">加载中...</p></div></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="modal-overlay" id="detail-modal" style="display:none;" onclick="closeDetail(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title" id="detail-title">算法详情</span>
+        <button class="modal-close" onclick="closeDetail()">✕</button>
+      </div>
+      <div class="modal-body" id="detail-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

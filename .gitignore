@@ -281,3 +281,5 @@ Research/Notebooks
 #Docker result files
 Results/
 QuantConnect.Lean.sln.DotSettings
+__pycache__/
+.lean_tags.json
